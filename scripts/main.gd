@@ -60,6 +60,7 @@ func _setup_input() -> void:
 	_add_keys("hack_4", [KEY_4])
 	_add_keys("restart", [KEY_ENTER, KEY_KP_ENTER])
 	_add_keys("pause", [KEY_ESCAPE])
+	_add_keys("help", [KEY_F1])
 	_add_keys("grid_up", [KEY_W, KEY_UP])
 	_add_keys("grid_down", [KEY_S, KEY_DOWN])
 	_add_keys("grid_left", [KEY_A, KEY_LEFT])

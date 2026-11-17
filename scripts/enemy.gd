@@ -19,7 +19,7 @@ var type: Type = Type.WALKER
 var display_name := ""
 var max_health := 120.0
 var health := 120.0
-var speed := 4.5
+var speed := 2.8
 var dead := false
 
 # Status
@@ -57,11 +57,11 @@ func setup(t: Type, p: Node3D, health_scale: float) -> void:
 	player = p
 	if type == Type.WALKER:
 		max_health = 120.0 * health_scale
-		speed = 4.5
+		speed = 2.8
 		display_name = "HOUND-%03d" % (randi() % 1000)
 	else:
 		max_health = 70.0 * health_scale
-		speed = 5.5
+		speed = 3.2
 		display_name = "WARDEN-%03d" % (randi() % 1000)
 	health = max_health
 
@@ -389,7 +389,7 @@ func _drone_ai(delta: float, target: Node3D) -> void:
 			desired = dir * speed
 		elif dist < 7.0:
 			desired = -dir * speed
-		desired += side * speed * 0.5
+		desired += side * speed * 0.35
 		desired.y = (hover - global_position.y) * 2.0
 		_face(to_t, delta)
 		if attack_timer <= 0.0 and dist < 25.0 and _has_line_of_sight(target):
@@ -403,7 +403,7 @@ func _drone_ai(delta: float, target: Node3D) -> void:
 		desired = to_w.normalized() * speed * 0.4
 		desired.y = (hover - global_position.y) * 2.0
 		_face(to_w, delta)
-	velocity = velocity.move_toward(desired, 12.0 * delta)
+	velocity = velocity.move_toward(desired, 6.0 * delta)
 	if move_and_slide() and randf() < 0.02:
 		strafe_dir = -strafe_dir
 
@@ -464,7 +464,7 @@ func _update_visuals() -> void:
 	var lines: Array[String] = []
 	if scanned:
 		lines.append("%s  %d/%d" % [display_name, int(ceil(health)), int(max_health)])
-		lines.append("ARMOR: " + ("OFFLINE %.0fs" % breach_timer if breached else "ACTIVE (Q to breach)"))
+		lines.append("ARMOR OFFLINE %.0fs" % breach_timer if breached else "ARMORED")
 	elif breached:
 		lines.append("ARMOR OFFLINE %.0fs" % breach_timer)
 	var st: Array[String] = []

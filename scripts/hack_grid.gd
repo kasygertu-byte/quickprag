@@ -7,9 +7,23 @@ signal finished(success: bool, amp: int, leech: int)
 
 const COLS := 6
 const ROWS := 6
-const CELL := 46.0
+const CELL := 52.0
 const PAD := 18.0
-const HEADER := 52.0
+const HEADER := 64.0
+const FOOTER := 64.0
+
+const C_BG := Color(0.03, 0.05, 0.09, 0.92)
+const C_EDGE := Color(1.0, 0.31, 0.85)
+const C_CELL := Color(0.09, 0.13, 0.2)
+const C_PATH := Color(0.25, 0.88, 1.0)
+const C_TEXT := Color(0.85, 0.9, 1.0)
+const C_DIM := Color(0.55, 0.62, 0.75)
+const NODE_COLORS := {
+	"in": Color(0.25, 0.88, 1.0),
+	"core": Color(0.35, 1.0, 0.55),
+	"AMP": Color(1.0, 0.72, 0.28),
+	"LEECH": Color(1.0, 0.31, 0.85),
+}
 const TIME_LIMIT := 7.0
 
 var active := false
@@ -25,7 +39,7 @@ var shake := 0.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	size = Vector2(COLS * CELL + PAD * 2.0, ROWS * CELL + PAD * 2.0 + HEADER + 24.0)
+	size = Vector2(COLS * CELL + PAD * 2.0, ROWS * CELL + PAD + HEADER + FOOTER)
 	visible = false
 
 
@@ -145,60 +159,92 @@ func _finish(success: bool, silent := false) -> void:
 
 
 func _cell_rect(c: Vector2i) -> Rect2:
-	var off := Vector2(PAD, PAD + HEADER)
+	var off := Vector2(PAD, HEADER)
 	if shake > 0.0:
 		off.x += sin(shake * 120.0) * 4.0
 	return Rect2(off + Vector2(c.x, c.y) * CELL, Vector2(CELL, CELL)).grow(-3.0)
 
 
+func _text(pos: Vector2, t: String, sz: int, col: Color) -> void:
+	var font := ThemeDB.fallback_font
+	draw_string_outline(font, pos, t, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, 4, Color(0, 0, 0, 0.8))
+	draw_string(font, pos, t, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+
+
 func _draw() -> void:
 	if not active:
 		return
-	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.06, 0.85))
-	draw_rect(Rect2(Vector2.ZERO, size), Color(1.0, 0.3, 0.9, 0.9), false, 2.0)
-	var tname := target.display_name if is_instance_valid(target) else ""
-	draw_string(font, Vector2(PAD, 26), "BREACH :: " + tname, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.5, 0.95))
-	# Timer bar
-	var frac := clampf(time_left / TIME_LIMIT, 0.0, 1.0)
-	var bar_w := size.x - PAD * 2.0
-	draw_rect(Rect2(PAD, 36, bar_w, 6), Color(0.2, 0.2, 0.25))
-	draw_rect(Rect2(PAD, 36, bar_w * frac, 6), Color(1.0, 0.3, 0.3) if frac < 0.3 else Color(1.0, 0.4, 0.9))
+	var t := Time.get_ticks_msec() * 0.001
+	# Panel with a cut top-left corner.
+	var cut := 14.0
+	var panel := PackedVector2Array([Vector2(cut, 0), Vector2(size.x, 0), size, Vector2(0, size.y), Vector2(0, cut)])
+	draw_colored_polygon(panel, C_BG)
+	var outline := panel.duplicate()
+	outline.append(panel[0])
+	draw_polyline(outline, Color(C_EDGE, 0.85), 2.0, true)
 
+	# Header
+	Icons.draw(self, "lock", Vector2(PAD + 9, 24), 9.0, C_EDGE)
+	_text(Vector2(PAD + 26, 30), "BREACH", 18, C_EDGE)
+	var tname := target.display_name if is_instance_valid(target) else ""
+	_text(Vector2(PAD + 108, 30), tname, 14, C_DIM)
+	var secs := "%.1fs" % maxf(time_left, 0.0)
+	var font := ThemeDB.fallback_font
+	var sw := font.get_string_size(secs, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+	var low := time_left < TIME_LIMIT * 0.3
+	_text(Vector2(size.x - PAD - sw, 30), secs, 16, Color(1, 0.35, 0.35) if low else C_TEXT)
+	var frac := clampf(time_left / TIME_LIMIT, 0.0, 1.0)
+	var bar := Rect2(PAD, 42, size.x - PAD * 2.0, 5)
+	draw_rect(bar, Color(1, 1, 1, 0.08))
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * frac, bar.size.y)), Color(1, 0.35, 0.35) if low else C_EDGE)
+
+	# Cells
 	for x in COLS:
 		for y in ROWS:
 			var c := Vector2i(x, y)
 			var r := _cell_rect(c)
 			if blocked.has(c):
-				draw_rect(r, Color(0.12, 0.05, 0.08))
-				draw_line(r.position, r.end, Color(0.5, 0.1, 0.15), 2.0)
-				draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), Color(0.5, 0.1, 0.15), 2.0)
+				draw_rect(r, Color(0.16, 0.04, 0.07))
+				draw_rect(r, Color(0.55, 0.12, 0.2, 0.6), false, 1.0)
+				Icons.draw(self, "lock", r.get_center(), r.size.x * 0.22, Color(0.75, 0.2, 0.28))
 				continue
-			var col := Color(0.1, 0.14, 0.2)
-			if path.has(c):
-				col = Color(0.15, 0.4, 0.5)
-			draw_rect(r, col)
-			draw_rect(r, Color(0.3, 0.5, 0.7, 0.5), false, 1.0)
-			var tag := ""
-			var tcol := Color.WHITE
+			var on_path := path.has(c)
+			draw_rect(r, Color(0.1, 0.3, 0.4) if on_path else C_CELL)
+			draw_rect(r, Color(0.35, 0.55, 0.8, 0.35), false, 1.0)
+			var id := ""
 			if c == start:
-				tag = "IN"
-				tcol = Color(0.5, 0.9, 1.0)
+				id = "in"
 			elif c == goal:
-				tag = "CORE"
-				tcol = Color(0.4, 1.0, 0.5)
+				id = "core"
 			elif bonus.has(c):
-				tag = bonus[c]
-				tcol = Color(1.0, 0.85, 0.2) if tag == "AMP" else Color(0.9, 0.4, 1.0)
-			if tag != "":
-				draw_rect(r, tcol, false, 2.0)
-				draw_string(font, r.position + Vector2(0, r.size.y * 0.5 + 5), tag, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 12, tcol)
+				id = bonus[c]
+			if id == "":
+				continue
+			var col: Color = NODE_COLORS[id]
+			var pulse := 0.5 + 0.5 * sin(t * 5.0)
+			if id == "core":
+				draw_rect(r.grow(-2.0), Color(col, 0.12 + 0.12 * pulse))
+			draw_rect(r, col, false, 2.0)
+			Icons.draw(self, id.to_lower(), r.get_center(), r.size.x * 0.28, col)
 
-	# Path trace
-	for i in range(1, path.size()):
-		draw_line(_cell_rect(path[i - 1]).get_center(), _cell_rect(path[i]).get_center(), Color(0.4, 1.0, 1.0), 4.0)
+	# Path trace: soft glow + bright core line.
+	if path.size() > 1:
+		var pts := PackedVector2Array()
+		for c in path:
+			pts.append(_cell_rect(c).get_center())
+		draw_polyline(pts, Color(C_PATH, 0.25), 10.0, true)
+		draw_polyline(pts, C_PATH, 3.0, true)
 	var head := _cell_rect(path[-1])
-	draw_rect(head.grow(2.0), Color(1, 1, 1), false, 3.0)
+	draw_rect(head.grow(3.0), Color(1, 1, 1, 0.9), false, 2.5)
+	draw_circle(head.get_center(), 4.0, Color.WHITE)
 
-	var foot := PAD + HEADER + ROWS * CELL + 18
-	draw_string(font, Vector2(PAD, foot), "WASD/Arrows: trace   Back-step: undo   Q: abort", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.75, 0.85))
+	# Legend
+	var ly := HEADER + ROWS * CELL + 22.0
+	var legend := [["in", "START"], ["core", "TARGET (finish)"], ["AMP", "+4s ARMOR OFF"], ["LEECH", "+3 BANDWIDTH"]]
+	for i in legend.size():
+		var e: Array = legend[i]
+		var p := Vector2(PAD + (i % 2) * 160.0, ly + (i / 2) * 20.0)
+		var col: Color = NODE_COLORS[e[0]]
+		Icons.draw(self, String(e[0]).to_lower(), p + Vector2(7, -4), 7.0, col)
+		_text(p + Vector2(20, 0), e[1], 12, C_DIM)
+	_text(Vector2(PAD, ly + 46), "WASD / ARROWS trace   STEP BACK undo   Q abort", 11, Color(C_DIM, 0.8))

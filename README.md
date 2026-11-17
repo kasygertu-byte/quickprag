@@ -24,6 +24,7 @@ Everything is built in code from `scenes/main.tscn`, so there are no asset files
 | Scan mode (time slows to 25%) | Tab |
 | Quickhacks | 1–4 |
 | Free mouse | Esc (click to recapture) |
+| Show / hide controls | F1 |
 | Restart after death | Enter |
 
 ## How the systems fit together
@@ -59,5 +60,6 @@ Everything is built in code from `scenes/main.tscn`, so there are no asset files
 | `scripts/player.gd` | Movement, third-person camera, rifle, targeting, scan mode, breach and quickhack logic |
 | `scripts/enemy.gd` | `Enemy` class: armor, status effects, upload timers, walker and drone AI |
 | `scripts/hack_grid.gd` | The breach grid minigame (generation, input, drawing) |
-| `scripts/hud.gd` | HUD, quickhack panel, scan overlay, game-over screen |
+| `scripts/hud.gd` | HUD (vector-drawn panels), quickhack deck, scan overlay, game-over screen |
+| `scripts/icons.gd` | Vector icon set used by the HUD and breach grid |
 | `scripts/projectile.gd` | Enemy energy bolts |
